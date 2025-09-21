@@ -1,0 +1,19 @@
+[project]
+name = "fold"
+version = "0.1.0"
+description = "A notification service for alerting users when laundry is done and ready to be...folded."
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy (>=2.3.3,<3.0.0)",
+    "playsound3 (>=3.2.6,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
