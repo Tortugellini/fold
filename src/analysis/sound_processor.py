@@ -1,10 +1,7 @@
 from playsound3 import playsound
 
 class Synthesizer:
-    def __init__(
-            self,
-            file: str
-        ) -> object:
+    def __init__(self, file: str) -> object:
         
         """
         An object for manipulating sound clips.
@@ -24,4 +21,4 @@ class Synthesizer:
         Plays the sound in the file.
         """
 
-        self._play_sound()
+        self._play_sound
