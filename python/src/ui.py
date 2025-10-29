@@ -48,13 +48,11 @@ async def toggle_theme():
     ui.dark_mode(dark_mode)
 
 
-async def start_stream(mode, port, baud, host, tcpport):
-    """Start button handler."""
+async def start_stream(mode, port, baud, host, tcpport, client):
     global running, source, task
     if running:
         return
 
-    # choose source
     if mode == 'Serial':
         source = SerialPCM16LE(port or "COM5", int(baud) if baud else 115200)
     elif mode == 'TCP':
@@ -65,7 +63,7 @@ async def start_stream(mode, port, baud, host, tcpport):
     await source.start()
     running = True
     status_label.set_text("Status: 🟢 Connected")
-    task = asyncio.create_task(update_loop(chart))
+    task = asyncio.create_task(update_loop(chart, client))
 
 
 async def stop_stream():
@@ -82,62 +80,45 @@ async def stop_stream():
     await source.stop()
 
 
-async def update_loop(chart_ref):
-    """Efficient, slot-safe update loop."""
+async def update_loop(chart_ref, client):
     global running
-    read_dt   = 1/200.0
-    render_dt = 1/10.0
-
+    read_dt = 1 / 200.0
+    render_dt = 1 / 10.0
     last_render = asyncio.get_event_loop().time()
-    t_last = last_render
-    frames = 0
     await asyncio.sleep(0.3)
 
     try:
         while running:
             data = await source.read_chunk(CHUNK)
             rb.extend(data)
+            arr = rb.np()[-WINDOW_SAMPLES:].tolist()
 
-            # statistics once per second
-            frames += 1
+            # safely run JavaScript through the client
+            await client.run_javascript(f"""
+                const el = getElement({chart_ref.id});
+                if (el && el.__chart) {{
+                    const s = el.__chart.getOption().series[0];
+                    s.data = {arr};
+                    el.__chart.setOption({{series:[s]}}, false, true);
+                }}
+            """)
+
+            mean = float(np.mean(data))
+            rms = float(np.sqrt(np.mean(data**2)))
+            await client.update_text(mean_label.id, f"Mean: {mean:+.4f}")
+            await client.update_text(rms_label.id, f"RMS:  {rms:+.4f}")
+
             now = asyncio.get_event_loop().time()
-            if now - t_last >= 1.0:
-                fps = frames / (now - t_last)
-                mean = float(np.mean(data))
-                rms  = float(np.sqrt(np.mean(data**2)))
-                # schedule label updates on the main thread
-                ui.timer(0, lambda m=mean, r=rms, f=fps:
-                         update_metrics(m, r, f), once=True)
-                frames = 0
-                t_last = now
-
-            # render at lower rate
             if now - last_render >= render_dt:
-                arr = rb.np()[-WINDOW_SAMPLES:]
-                chart_ref.options['series'][0]['data'] = arr.tolist()
-                chart_ref.update()
                 last_render = now
-
             await asyncio.sleep(read_dt)
 
     except asyncio.CancelledError:
         pass
-    except Exception as e:
-        ui.timer(0, lambda msg=str(e):
-                 status_label.set_text(f"Status: ⚠️ Error ({msg})"), once=True)
-        await asyncio.sleep(1)
-
-
-def update_metrics(mean, rms, fps):
-    """Called on UI thread via ui.timer to avoid slot errors."""
-    mean_label.set_text(f"Mean: {mean:+.4f}")
-    rms_label.set_text(f"RMS:  {rms:+.4f}")
-    status_label.set_text(f"Status: 🟢 Connected ({fps:.1f} Hz feed)")
-
 
 
 @ui.page('/')
-def main_page():
+def main_page(client):
     global chart, status_label, mean_label, rms_label
 
     with ui.header().classes('items-center justify-between'):
@@ -148,7 +129,7 @@ def main_page():
             baud_in = ui.input(placeholder='Baud').props('dense').classes('w-28').bind_visibility_from(mode, 'value', lambda v: v=='Serial')
             host_in = ui.input(placeholder='Host').props('dense').classes('w-44').bind_visibility_from(mode, 'value', lambda v: v=='TCP')
             tcpport_in = ui.input(placeholder='Port').props('dense').classes('w-28').bind_visibility_from(mode, 'value', lambda v: v=='TCP')
-            ui.button('Start', on_click=lambda: asyncio.create_task(start_stream(mode.value, port_in.value, baud_in.value, host_in.value, tcpport_in.value)))
+            ui.button('Start', on_click=lambda: asyncio.create_task(start_stream(mode.value, port_in.value, baud_in.value,host_in.value, tcpport_in.value, client)))
             ui.button('Stop', on_click=lambda: asyncio.create_task(stop_stream()), color='negative')
             ui.button('🌙/☀️', on_click=toggle_theme).tooltip('Toggle dark/light mode')
 
