@@ -1,5 +1,14 @@
-import ui as audio_ui   # our own ui.py
+import sys
+from PyQt6 import QtCore, QtWidgets
+from ui import MainWindow
 
-from nicegui import ui
+def main() -> None:
+    # High-DPI and modern behavior
+    app = QtWidgets.QApplication(sys.argv)
 
-ui.run(title='Audio Monitor', dark=False, port=8080)
+    win = MainWindow()
+    win.show()
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
