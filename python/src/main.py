@@ -1,15 +1,10 @@
 import sys
-from PyQt6 import QtCore, QtWidgets
+from PyQt6.QtWidgets import QApplication
 from ui import MainWindow
 
-
-def main() -> None:
-    # High-DPI and modern behavior
-    app = QtWidgets.QApplication(sys.argv)
-    win = MainWindow()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    dev_mode = "--dev" in sys.argv
+    win = MainWindow(dev_mode=dev_mode)
     win.show()
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()
