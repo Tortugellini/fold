@@ -1,0 +1,21 @@
+# ====== Global numeric constants ======
+SAMPLE_RATE = 8000
+CHUNK = 256
+ROLLING_SEC = 5
+READ_TIMEOUT_S = 0.05
+MAX_BACKLOG_BYTES = 1_000_000
+
+
+# ====== Color scheme ======
+class Color:
+    IDLE = "#444"
+    RUNNING = "#00e676"
+    WARNING = "#ffcc00"
+    ERROR = "#cc0000"
+
+
+# ====== Modes ======
+class Mode:
+    TEST = "Test"
+    SERIAL = "Serial"
+    TCP = "TCP"
