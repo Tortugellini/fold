@@ -70,7 +70,10 @@ class StreamWorker(QtCore.QObject):
         w = 2 * np.pi * freq / SAMPLE_RATE
         while not self._stop.is_set():
             idx = np.arange(CHUNK, dtype=np.float32)
-            chunk = np.sin(phase + w * idx)
+            chunk = np.sin(phase + w * idx) + np.sin(
+                (phase + np.random.randint(0, 180))
+                + (w + (2 * np.pi * np.random.randint(0, 1220)))
+            )
             phase = (phase + w * CHUNK) % (2 * np.pi)
             self._emit_chunk(chunk)
             QtCore.QThread.msleep(int(CHUNK / SAMPLE_RATE * 1000 * 0.75))
