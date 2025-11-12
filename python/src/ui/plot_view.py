@@ -36,6 +36,4 @@ class PlotView(QtWidgets.QWidget):
 
     def _on_plot_click(self, event):
         if event.double():
-            vb = self.plot.getViewBox()
-            vb.enableAutoRange(x=True, y=True)
-            vb.autoRange(padding=0.05)
+            self.plot.getPlotItem().autoBtnClicked()
