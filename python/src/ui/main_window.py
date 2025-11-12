@@ -7,7 +7,7 @@ from constants import SAMPLE_RATE, ROLLING_SEC, Color, Mode
 from stream.buffer import RollingBuffer
 from stream.worker import StreamWorker
 from widgets.status_led import StatusLED
-from ui.sidebar import Sidebar
+from ui.sidepanel import Sidepanel
 from ui.plot_view import PlotView
 
 WINDOW_SAMPLES = SAMPLE_RATE * ROLLING_SEC
@@ -55,7 +55,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_led = StatusLED(14)
         self.status_led.set_color(Color.IDLE)
         self.app_refresh_lbl = QtWidgets.QLabel("Refresh: --- Hz")
-        self.app_refresh_lbl.setStyleSheet("color:black; font-size:12px; font-weight:bold;")
+        self.app_refresh_lbl.setObjectName("appRefreshLabel")
+        # self.app_refresh_lbl.setStyleSheet(
+        #     "color:black; font-size:12px; font-weight:bold;"
+        # )
         top.addWidget(self.status_led)
         top.addSpacing(6)
         top.addWidget(self.app_refresh_lbl)
@@ -66,8 +69,8 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         layout.addWidget(splitter, stretch=1)
 
-        # Sidebar (controls)
-        self.sidebar = Sidebar(self.dev_mode)
+        # Sidepanel (controls)
+        self.sidebar = Sidepanel(self.dev_mode)
         self.sidebar.mode_group.idClicked.connect(self._on_mode_button)
         self.sidebar.start_btn.clicked.connect(self._on_start)
         self.sidebar.stop_btn.clicked.connect(self._on_stop)
