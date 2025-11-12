@@ -161,3 +161,8 @@ class StreamWorker(QtCore.QObject):
             self.status_changed.emit(f"error:{type(e).__name__}: {e}")
         finally:
             s.close()
+
+class AudioPlayer(QtCore.QtObject):
+    """Plays the sound collected by the StreamWorker."""
+    def __init__(self, mode: str):
+        pass
