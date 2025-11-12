@@ -56,9 +56,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_led.set_color(Color.IDLE)
         self.app_refresh_lbl = QtWidgets.QLabel("Refresh: --- Hz")
         self.app_refresh_lbl.setObjectName("appRefreshLabel")
-        # self.app_refresh_lbl.setStyleSheet(
-        #     "color:black; font-size:12px; font-weight:bold;"
-        # )
         top.addWidget(self.status_led)
         top.addSpacing(6)
         top.addWidget(self.app_refresh_lbl)
