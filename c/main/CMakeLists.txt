@@ -1,3 +1,3 @@
-set(COMPONENT_SRCS "testing_functionalities.c")
+set(COMPONENT_SRCS "testing_LED.c")
 
 register_component()
