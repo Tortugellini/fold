@@ -5,17 +5,17 @@ class RollingBuffer:
     """Efficient fixed-length rolling buffer for float32 samples."""
 
     def __init__(self, maxlen: int):
-        self._n = maxlen
+        self._len = maxlen
         self._buf = np.zeros(maxlen, dtype=np.float32)
 
-    def extend(self, x: np.ndarray):
-        x = np.asarray(x, dtype=np.float32)
-        n = len(x)
-        if n >= self._n:
-            self._buf[:] = x[-self._n :]
+    def extend(self, incoming_data: np.ndarray):
+        incoming_data = np.asarray(incoming_data, dtype=np.float32)
+        n = len(incoming_data)
+        if n >= self._len:
+            self._buf[:] = incoming_data[-self._len :]
         else:
             self._buf[:-n] = self._buf[n:]
-            self._buf[-n:] = x
+            self._buf[-n:] = incoming_data
 
     def np(self) -> np.ndarray:
         return self._buf
