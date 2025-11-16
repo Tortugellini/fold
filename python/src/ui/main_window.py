@@ -154,6 +154,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._stream_worker.finished.connect(self._on_worker_finished)
         self._stream_thread.finished.connect(self._stream_thread.deleteLater)
 
+        self._audio_player = AudioPlayer(self._current_mode(), self._buffer)
+        self._audio_player.moveToThread(self._audio_thread)
+        self._audio_thread.started.connect(self._audio_player.play_sounds)
+
         self._set_controls_enabled(False)
         self.sidepanel.stop_btn.setEnabled(True)
         self.sidepanel.listen_btn.setEnabled(False)
