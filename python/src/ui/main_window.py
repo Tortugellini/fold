@@ -1,20 +1,32 @@
 import time
 import numpy as np
-from PyQt6 import QtWidgets, QtCore
 import pyqtgraph as pg
 
-from constants import SAMPLE_RATE, ROLLING_SEC, Color, Mode
+from loguru import logger
+from PyQt6 import QtWidgets, QtCore
+
+from constants import WINDOW_SAMPLES, Color, Mode
 from stream.buffer import RollingBuffer
-from stream.worker import StreamWorker
+from stream.stream_handler import StreamHandler
+from stream.audio_player import AudioPlayer
 from widgets.status_led import StatusLED
 from ui.sidepanel import Sidepanel
 from ui.plot_view import PlotView
 
-WINDOW_SAMPLES = SAMPLE_RATE * ROLLING_SEC
+# Logger created here because this is where all the action takes place.
+logger.add("/home/maste/esp/fold/python/src/fold.log")
 
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, dev_mode: bool = False):
+        """
+        Initializes the main window of the application with or without developer fidelity
+        depending on whether the flag '--dev' is passed.
+        ---
+        Parameters:
+            dev_mode, bool: The flag mentioned above. Passed as a CLI argument to Python.
+        """
+
         super().__init__()
         self.dev_mode = dev_mode
         self.setWindowTitle(f"fold {' [DEV MODE]' if dev_mode else ''}")
@@ -22,10 +34,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Data + threads
         self._buffer = RollingBuffer(WINDOW_SAMPLES)
-        self._worker: StreamWorker | None = None
-        self._thread: QtCore.QThread | None = None
+        self._stream_worker: StreamHandler | None = None
+        self._audio_player: AudioPlayer | None = None
+        self._stream_thread: QtCore.QThread | None = None
+        self._audio_thread: QtCore.QThread | None = None
 
         # UI metrics
+        self._feed_frames = 0
         self._render_frames = 0
         self._last_render_t = time.monotonic()
 
@@ -37,10 +52,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._render_timer.timeout.connect(self._render_frame)
         self._render_timer.start(33)
 
-    # =====================================================
-    # ---------- UI Composition ----------
-    # =====================================================
     def _build_ui(self):
+        """
+        Builds all the UI functionality of the application.
+        """
+
         pg.setConfigOption("background", "k")
         pg.setConfigOption("foreground", "w")
 
@@ -67,109 +83,109 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(splitter, stretch=1)
 
         # Sidepanel (controls)
-        self.sidebar = Sidepanel(self.dev_mode)
-        self.sidebar.mode_group.idClicked.connect(self._on_mode_button)
-        self.sidebar.start_btn.clicked.connect(self._on_start)
-        self.sidebar.stop_btn.clicked.connect(self._on_stop)
-        splitter.addWidget(self.sidebar)
+        self.sidepanel = Sidepanel(self.dev_mode)
+        self.sidepanel.setMinimumWidth(
+            120
+        )  # Starts the sidepanel at a full URI length.
+        self.sidepanel.mode_group.idClicked.connect(self._on_mode_button)
+        self.sidepanel.listen_btn.clicked.connect(self._on_listen)
+        self.sidepanel.stop_btn.clicked.connect(self._on_stop)
+        self.sidepanel.host_edit.hide()
+        self.sidepanel.udpport_edit.hide()
+        splitter.addWidget(self.sidepanel)
 
         # Plot view (right)
         self.plot_view = PlotView()
         splitter.addWidget(self.plot_view)
-        splitter.setSizes([self.sidebar.minimumWidth() + 1, 1000])
+        splitter.setSizes([self.sidepanel.minimumWidth() + 1, 1000])
 
-        self._apply_mode_visibility(Mode.TEST if self.dev_mode else Mode.SERIAL)
-
-    # =====================================================
-    # ---------- Mode handling ----------
-    # =====================================================
     def _on_mode_button(self, idx: int):
-        modes = (
-            [Mode.TEST, Mode.SERIAL, Mode.TCP]
-            if self.dev_mode
-            else [Mode.SERIAL, Mode.TCP]
-        )
+        """
+        Determines what buttons are shown on the UI.
+        """
+
+        modes = [Mode.TEST, Mode.UDP] if self.dev_mode else [Mode.UDP]
         self._apply_mode_visibility(modes[idx])
 
     def _apply_mode_visibility(self, mode: str):
         self._current_mode_cached = mode
-        is_serial = mode == Mode.SERIAL
-        is_tcp = mode == Mode.TCP
-        for w in (self.sidebar.port_edit, self.sidebar.baud_edit):
-            w.setVisible(is_serial)
-            w.setEnabled(is_serial)
-        for w in (self.sidebar.host_edit, self.sidebar.tcpport_edit):
-            w.setVisible(is_tcp)
-            w.setEnabled(is_tcp)
+        logger.info(f"Switcing to {mode}")
+        is_udp = mode == Mode.UDP
+        for w in (self.sidepanel.host_edit, self.sidepanel.udpport_edit):
+            w.setVisible(is_udp)
+            w.setEnabled(is_udp)
 
     def _current_mode(self) -> str:
         if (
             self.dev_mode
-            and getattr(self.sidebar, "test_btn", None)
-            and self.sidebar.test_btn.isChecked()
+            # and getattr(self.sidepanel, "test_btn", None)
+            and self.sidepanel.test_btn.isChecked()
         ):
+            # logger.info("Testing things out.")
             return Mode.TEST
-        if self.sidebar.serial_btn.isChecked():
-            return Mode.SERIAL
-        if self.sidebar.tcp_btn.isChecked():
-            return Mode.TCP
-        return getattr(self, "_current_mode_cached", Mode.SERIAL)
+        if self.sidepanel.udp_btn.isChecked():
+            # logger.info("Listening to the stream.")
+            return Mode.UDP
 
-    # =====================================================
-    # ---------- Stream control ----------
-    # =====================================================
-    def _on_start(self):
-        if self._thread and self._thread.isRunning():
+    def _on_listen(self):
+        """
+        Determines what happens when 'Listen' is pushed.
+        """
+
+        if self._stream_thread and self._stream_thread.isRunning():
             return
 
-        mode = self._current_mode()
-        params = {
-            "port": self.sidebar.port_edit.text(),
-            "baud": self.sidebar.baud_edit.text(),
-            "host": self.sidebar.host_edit.text(),
-            "tcpport": self.sidebar.tcpport_edit.text(),
-        }
+        logger.info("Listening to the stream.")
 
-        self._thread = QtCore.QThread()
-        self._worker = StreamWorker(mode, params)
-        self._worker.moveToThread(self._thread)
+        self._stream_thread = QtCore.QThread()
+        self._audio_thread = QtCore.QThread()
 
-        self._thread.started.connect(self._worker.process)
-        self._worker.chunk_ready.connect(self._on_chunk)
-        self._worker.status_changed.connect(self._on_status)
-        self._worker.finished.connect(self._on_worker_finished)
-        self._thread.finished.connect(self._thread.deleteLater)
+        self._stream_worker = StreamHandler(
+            self._current_mode(),
+            {
+                "host": self.sidepanel.host_edit.text(),
+                "udpport": self.sidepanel.udpport_edit.text(),
+            },
+        )
+        self._stream_worker.moveToThread(self._stream_thread)
+        self._stream_thread.started.connect(self._stream_worker.process)
+        self._stream_worker.chunk_ready.connect(self._on_chunk)
+        self._stream_worker.status_changed.connect(self._on_status)
+        self._stream_worker.finished.connect(self._on_worker_finished)
+        self._stream_thread.finished.connect(self._stream_thread.deleteLater)
 
         self._set_controls_enabled(False)
-        self.sidebar.stop_btn.setEnabled(True)
-        self.sidebar.start_btn.setEnabled(False)
-        self.sidebar.status_lbl.setText("Starting…")
+        self.sidepanel.stop_btn.setEnabled(True)
+        self.sidepanel.listen_btn.setEnabled(False)
+        self.sidepanel.status_lbl.setText("Starting…")
         self.status_led.set_color(Color.WARNING)
-        self._thread.start()
+        self._stream_thread.start()
 
     def _on_stop(self):
-        if not self._worker:
+        """
+        Determines what happens when 'Stop' is pushed.
+        """
+
+        if not self._stream_worker:
             return
-        self._worker.stop()
-        self.sidebar.stop_btn.setEnabled(False)
-        self.sidebar.status_lbl.setText("Stopping…")
+        self._stream_worker.stop()
+        self.sidepanel.stop_btn.setEnabled(False)
+        self.sidepanel.status_lbl.setText("Stopping…")
+        logger.info("Stopping the stream.")
         self.status_led.set_color(Color.WARNING)
 
     def _on_worker_finished(self):
-        if self._thread and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait()
-        self._worker = None
-        self._thread = None
-        self.sidebar.status_lbl.setText("Stopped")
+        if self._stream_thread and self._stream_thread.isRunning():
+            self._stream_thread.quit()
+            self._stream_thread.wait()
+        self._stream_worker = None
+        self._stream_thread = None
+        self.sidepanel.status_lbl.setText("Stopped")
         self.status_led.set_color(Color.IDLE)
         self._set_controls_enabled(True)
-        self.sidebar.start_btn.setEnabled(True)
-        self.sidebar.stop_btn.setEnabled(False)
+        self.sidepanel.listen_btn.setEnabled(True)
+        self.sidepanel.stop_btn.setEnabled(False)
 
-    # =====================================================
-    # ---------- Data handling ----------
-    # =====================================================
     def _on_chunk(self, data: np.ndarray):
         self._buffer.extend(data)
         mean = float(np.mean(data))
@@ -178,9 +194,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_view.rms_lbl.setText(f"RMS: {rms:+.5f}")
 
         now = time.monotonic()
-        if not hasattr(self, "_feed_frames"):
-            self._feed_frames = 0
-            self._last_feed_t = now
+        self._last_feed_t = now
         self._feed_frames += 1
         if now - self._last_feed_t >= 1.0:
             fps = self._feed_frames / (now - self._last_feed_t)
@@ -191,18 +205,15 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(str)
     def _on_status(self, msg: str):
         if msg == "connecting":
-            self.sidebar.status_lbl.setText("Connecting…")
+            self.sidepanel.status_lbl.setText("Connecting…")
             self.status_led.set_color(Color.WARNING)
         elif msg == "running":
-            self.sidebar.status_lbl.setText("Connected")
+            self.sidepanel.status_lbl.setText("Connected")
             self.status_led.set_color(Color.RUNNING)
         elif msg.startswith("error:"):
-            self.sidebar.status_lbl.setText(msg)
+            self.sidepanel.status_lbl.setText(msg)
             self.status_led.set_color(Color.ERROR)
 
-    # =====================================================
-    # ---------- Render + utils ----------
-    # =====================================================
     def _render_frame(self):
         arr = self._buffer.np()
         if arr.size:
@@ -217,24 +228,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _set_controls_enabled(self, enabled: bool):
         widgets = [
-            self.sidebar.serial_btn,
-            self.sidebar.tcp_btn,
-            self.sidebar.port_edit,
-            self.sidebar.baud_edit,
-            self.sidebar.host_edit,
-            self.sidebar.tcpport_edit,
-            self.sidebar.start_btn,
-            self.sidebar.stop_btn,
+            self.sidepanel.udp_btn,
+            self.sidepanel.host_edit,
+            self.sidepanel.udpport_edit,
+            self.sidepanel.listen_btn,
+            self.sidepanel.stop_btn,
         ]
-        if hasattr(self.sidebar, "test_btn"):
-            widgets.insert(0, self.sidebar.test_btn)
+        if self.dev_mode:
+            widgets.insert(0, self.sidepanel.test_btn)
         for w in widgets:
             w.setEnabled(enabled)
 
     def closeEvent(self, event):
-        if self._worker:
-            self._worker.stop()
-        if self._thread and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait()
+        logger.info("Closing the app.")
+        if self._stream_worker:
+            self._stream_worker.stop()
+        if self._stream_thread and self._stream_thread.isRunning():
+            self._stream_thread.quit()
+            self._stream_thread.wait()
         event.accept()
