@@ -25,10 +25,11 @@ class AudioPlayer(QtCore.QObject):
         Parameters:
             in_data, np.array: Data from the 'RollingBuffer.'
             fram_count, int: The number of frames to play.
-            time_info, dict:
+            time_info, dict: Required information for 'callback' functionality. See documentation
+                             for details about contents.
             status_flags, int: An integer value that corresponds to values of an Enum in PortAudio.
-                         The flag used should have the value of 0 which indicates to continue
-                         the stream.
+                               The flag used should have the value of 0 which indicates to continue
+                               the stream.
         ---
         Returns: A tuple containing the new data for the stream and a required flag that indicates to
                  continue streaming the sound.
@@ -39,7 +40,7 @@ class AudioPlayer(QtCore.QObject):
 
     def play_sounds(self):
         """
-        Plays the data in sound_data. Since this is a 'RollingBuffer' object, new data should be
+        Plays data in 'sound_data.' Since this is a 'RollingBuffer' object, new data should be
         handled in a FIFO manner.
         """
 
