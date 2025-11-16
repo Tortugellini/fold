@@ -1,7 +1,8 @@
-click==8.3.0
+click==8.3.1
 librosa==0.11.0
+loguru==0.7.3
 numpy==2.3.4
+pyaudio==0.2.14
 PyQt6==6.10.0
 pyqt6_sip==13.10.2
 pyqtgraph==0.13.7
-pyserial==3.5
