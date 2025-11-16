@@ -1,3 +1,6 @@
-An application for notifying the user when their laundry is done.
+# fold
+For those of us too lazy to set a timer.
 
-More description and instruction to come as the application is developed.
+**Real-time audio frequency detection and monitoring.**
+Low-latency C backend for capture/FFT; Python layer for streaming, visualization, and alerts.
+Originally built to ping when laundry cycles finish — now generalized for any acoustic trigger.
