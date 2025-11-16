@@ -8,9 +8,9 @@ class Sidepanel(QtWidgets.QFrame):
         self.dev_mode = dev_mode
         self.setObjectName("sidepanel")
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.setContentsMargins(12, 12, 12, 12)
+        self.layout.setSpacing(10)
 
         # Mode buttons
         self.mode_group = QtWidgets.QButtonGroup(self)
@@ -20,43 +20,35 @@ class Sidepanel(QtWidgets.QFrame):
             self.test_btn.setObjectName("modeButton")
             self.buttons.append(self.test_btn)
 
-        self.serial_btn = QtWidgets.QPushButton(Mode.SERIAL)
-        self.serial_btn.setObjectName("modeButton")
-        self.tcp_btn = QtWidgets.QPushButton(Mode.TCP)
-        self.tcp_btn.setObjectName("modeButton")
-        self.buttons.extend([self.serial_btn, self.tcp_btn])
+        self.udp_btn = QtWidgets.QPushButton(Mode.UDP)
+        self.udp_btn.setObjectName("modeButton")
+        self.buttons.append(self.udp_btn)
 
         for i, b in enumerate(self.buttons):
             b.setCheckable(True)
             b.setAutoExclusive(True)
             self.mode_group.addButton(b, i)
-            layout.addWidget(b)
-        self.buttons[0].setChecked(True)
+            self.layout.addWidget(b)
 
-        layout.addSpacing(8)
-        conn_label = QtWidgets.QLabel("Connection")
-        conn_label.setObjectName("sectionLabel")
-        layout.addWidget(conn_label)
+        self.layout.addSpacing(8)
 
-        self.port_edit = QtWidgets.QLineEdit(placeholderText="COM5 / ttyUSB0")
-        self.baud_edit = QtWidgets.QLineEdit(placeholderText="115200")
         self.host_edit = QtWidgets.QLineEdit(placeholderText="192.168.4.1")
-        self.tcpport_edit = QtWidgets.QLineEdit(placeholderText="1234")
+        self.udpport_edit = QtWidgets.QLineEdit(placeholderText="1234")
 
-        for w in (self.port_edit, self.baud_edit, self.host_edit, self.tcpport_edit):
+        for w in (self.host_edit, self.udpport_edit):
             w.setObjectName("connField")
-            layout.addWidget(w)
+            self.layout.addWidget(w)
 
-        layout.addSpacing(8)
-        self.start_btn = QtWidgets.QPushButton("Start")
-        self.start_btn.setObjectName("controlButton")
+        self.layout.addSpacing(8)
+        self.listen_btn = QtWidgets.QPushButton("Listen")
+        self.listen_btn.setObjectName("controlButton")
         self.stop_btn = QtWidgets.QPushButton("Stop")
         self.stop_btn.setObjectName("controlButton")
 
-        for b in (self.start_btn, self.stop_btn):
-            layout.addWidget(b)
+        for b in (self.listen_btn, self.stop_btn):
+            self.layout.addWidget(b)
 
-        layout.addStretch(1)
+        self.layout.addStretch(1)
         self.status_lbl = QtWidgets.QLabel("Idle")
         self.status_lbl.setObjectName("statusLabel")
-        layout.addWidget(self.status_lbl)
+        self.layout.addWidget(self.status_lbl)
