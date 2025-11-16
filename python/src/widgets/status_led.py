@@ -7,13 +7,13 @@ class StatusLED(QtWidgets.QFrame):
     def __init__(self, size: int = 14, parent=None):
         super().__init__(parent)
         self._size = size
+        self.setObjectName("StatusLED")
         self.setFixedSize(size, size)
-        self.set_color("#444")
 
-    def set_color(self, color):
-        # ensure Qt gets a plain string, even if Enum or QColor is passed
-        color_str = str(color)
-        self.setStyleSheet(
-            f"background-color:{color_str}; border-radius:{self._size//2}px; "
-            "border:1px solid #111;"
-        )
+        self.set_color("default")
+
+    def set_color(self, state: str):
+        self.setProperty("state", state)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()

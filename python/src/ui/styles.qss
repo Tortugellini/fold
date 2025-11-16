@@ -15,6 +15,7 @@ QPushButton#modeButton {
     background-color: #333;
     color: white;
 }
+
 QPushButton#modeButton:checked {
     background-color: #00e676;
     color: black;
@@ -33,6 +34,12 @@ QPushButton#controlButton {
     color: white;
 }
 
+/* For future use. */
+QPushButton#controlButton:checked {
+    background-color: darkgray;
+    border: 1px inset black;
+}
+
 QLabel#statusLabel {
     color: #aaa;
 }
@@ -43,3 +50,19 @@ QLabel#appRefreshLabel {
     font-weight: bold;
 }
 
+#StatusLED {
+    border-radius: 7px;
+    border: 1px solid #111;
+    background-color: #444;
+}
+
+#StatusLED[state="default"] { background-color: #444; }
+#StatusLED[state="running"] { background-color: #2ecc71; }
+#StatusLED[state="error"]   { background-color: #e74c3c; }
+#StatusLED[state="idle"]    { background-color: #f1c40f; }
+
+QLabel#metricsLabel {
+    color: black;
+    font-size: 13px;
+    font-family: "Courier New", monospace;
+}

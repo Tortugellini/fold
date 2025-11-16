@@ -23,12 +23,11 @@ class PlotView(QtWidgets.QWidget):
         layout.addWidget(self.plot, stretch=1)
 
         metrics = QtWidgets.QHBoxLayout()
-        mono = "font-family:'Courier New', monospace;"
         self.mean_lbl = QtWidgets.QLabel("Mean: ---")
         self.rms_lbl = QtWidgets.QLabel("RMS: ---")
         self.fps_lbl = QtWidgets.QLabel("Feed: --- Hz")
         for lbl in (self.mean_lbl, self.rms_lbl, self.fps_lbl):
-            lbl.setStyleSheet(f"color:black;font-size:13px;{mono}")
+            lbl.setObjectName("metricsLabel")
             metrics.addWidget(lbl)
             metrics.addSpacing(20)
         metrics.addStretch(1)
