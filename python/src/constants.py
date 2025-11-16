@@ -1,12 +1,11 @@
-# ====== Global numeric constants ======
 SAMPLE_RATE = 8000
 CHUNK = 256
 ROLLING_SEC = 5
 READ_TIMEOUT_S = 0.05
 MAX_BACKLOG_BYTES = 1_000_000
+WINDOW_SAMPLES = SAMPLE_RATE * ROLLING_SEC
 
 
-# ====== Color scheme ======
 class Color:
     IDLE = "#444"
     RUNNING = "#00e676"
@@ -14,8 +13,6 @@ class Color:
     ERROR = "#cc0000"
 
 
-# ====== Modes ======
 class Mode:
     TEST = "Test"
-    SERIAL = "Serial"
-    TCP = "TCP"
+    UDP = "UDP"
